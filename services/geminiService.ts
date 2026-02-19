@@ -3,13 +3,37 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { LeaveEntry, LeaveType, LeaveQuota, PublicHoliday } from "../types";
 import { ANNUAL_QUOTA } from "../constants";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+let aiClient: GoogleGenAI | null = null;
+
+const getAiClient = () => {
+  if (aiClient) {
+    return aiClient;
+  }
+
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  try {
+    aiClient = new GoogleGenAI({ apiKey });
+    return aiClient;
+  } catch (error) {
+    console.error("Failed to initialize Gemini client:", error);
+    return null;
+  }
+};
 
 export const getSmartLeavePlanning = async (
   currentLeaves: LeaveEntry[],
   remainingQuota: LeaveQuota,
   holidays: PublicHoliday[] = []
 ) => {
+  const ai = getAiClient();
+  if (!ai) {
+    return null;
+  }
+
   const year = new Date().getFullYear();
   const prompt = `
     I have a leave tracking app. Current year is ${year}.
